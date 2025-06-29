@@ -88,9 +88,17 @@ execute_command() {
     output=$(eval "$cmd" 2>&1)
     local exit_code=$?
     
+    log "Command exit code: $exit_code"
+    log "Output length: ${#output} characters"
+    
     # Add exit code to output
     if [ $exit_code -ne 0 ]; then
         output="Exit Code: $exit_code"$'\n'"$output"
+    fi
+    
+    # If output is empty, add a note
+    if [ -z "$output" ]; then
+        output="Command executed successfully but produced no output."
     fi
     
     echo "$output"
@@ -100,8 +108,14 @@ execute_command() {
 send_result() {
     local output="$1"
     
-    # Create JSON payload
-    local json_data="{\"agent_id\":\"$AGENT_ID\",\"output\":\"$(echo "$output" | sed 's/"/\\"/g' | tr '\n' '\\n')\",\"time\":\"$(date '+%Y-%m-%d %H:%M:%S')\"}"
+    # Properly escape the output for JSON
+    local escaped_output=$(echo "$output" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed 's/\n/\\n/g' | sed 's/\r/\\r/g' | sed 's/\t/\\t/g')
+    
+    # Create JSON payload with proper escaping
+    local json_data="{\"agent_id\":\"$AGENT_ID\",\"output\":\"$escaped_output\",\"time\":\"$(date '+%Y-%m-%d %H:%M:%S')\"}"
+    
+    log "Sending result for agent: $AGENT_ID"
+    log "Output length: ${#output} characters"
     
     response=$(curl -s -X POST "$SERVER/submit-result" \
         -H "Content-Type: application/json" \
@@ -111,6 +125,7 @@ send_result() {
         log "Result sent successfully"
     else
         error "Failed to send result"
+        error "Response: $response"
     fi
 }
 

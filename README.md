@@ -219,6 +219,13 @@ go run server/main.go
 
 ## 🐛 Troubleshooting
 
+### Quick Test
+Run the test script to verify your setup:
+```bash
+chmod +x test_agents.sh
+./test_agents.sh
+```
+
 ### Common Issues
 
 #### Agent Connection Problems
@@ -232,6 +239,7 @@ go run server/main.go
 - **Command syntax**: Verify commands work in local terminal
 - **Permissions**: Some commands may require elevated privileges
 - **Timeout**: Commands have 30-second timeout (Python agent)
+- **Empty output**: Commands that produce no output will show a message
 
 #### Platform-Specific Issues
 
@@ -255,6 +263,13 @@ Enable verbose logging by modifying agent scripts:
 - Add `set -x` to bash scripts
 - Add `-Verbose` to PowerShell commands
 - Python agent has built-in logging
+
+### Agent Output Issues
+If agents connect but don't show output:
+1. Check server logs for JSON parsing errors
+2. Verify agent is sending proper JSON format
+3. Test with simple commands like `echo "test"`
+4. Check if commands work in local terminal
 
 ---
 
